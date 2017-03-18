@@ -13,12 +13,13 @@ def calculate_normalized_auc(y, x):
     return float(area)/x[-1]
 
 
-def hl_distances_from_set(A_list, B, points=65, margin_factor=0.25):
+def hl_distances_from_set(A_list, B, points=65, margin_factor=0.25, bw=None):
     """
     Calculates Hellinger distances of A_list sets from the set B using
     continuous formula.
     """
-    bw = B.shape[0]**(-1.0/5)*0.5
+    if bw is None:
+        bw = B.shape[0]**(-1.0/5)*0.5
     yBs = []
     xs = []
     for j in range(B.shape[1]):
@@ -49,7 +50,7 @@ def hl_distances_from_set(A_list, B, points=65, margin_factor=0.25):
             yield 1-integral
 
 
-def complexity_curve(X, points=20, k=10, use_ica=True, **kwargs):
+def complexity_curve(X, points=20, k=10, use_ica=True, bw=None, **kwargs):
     """Calculates complexity curve for a given data set.
 
     Args:
@@ -72,8 +73,8 @@ def complexity_curve(X, points=20, k=10, use_ica=True, **kwargs):
 
     sets = [X[np.random.choice(range(X.shape[0]), int(i), replace=False)]
             for i in l for j in range(k)]
-    distances = np.reshape(list(hl_distances_from_set(sets, X)),
-                           (len(sets)/k, k))
+    distances = np.reshape(list(hl_distances_from_set(sets, X, bw=bw)),
+                           (int(len(sets)/k), k))
     m = distances.mean(axis=1)
     s = distances.std(axis=1)
 
@@ -83,7 +84,7 @@ def complexity_curve(X, points=20, k=10, use_ica=True, **kwargs):
     return np.array([l, m, s]).T
 
 
-def conditional_complexity_curve(X, y, points=20, k=10, use_ica=True,
+def conditional_complexity_curve(X, y, points=20, k=10, use_ica=True, bw=None,
                                  **kwargs):
     """Calculates conditional complexity curve for a given data set.
 
@@ -114,10 +115,10 @@ def conditional_complexity_curve(X, y, points=20, k=10, use_ica=True,
             except ValueError:
                 print("FastICA encountered NaNs. Try adding noise to the data.")
         sets = [x[ind][y[ind] == yval] for ind in indices]
-        distances += np.array(list(hl_distances_from_set(sets, x[mask])))
+        distances += np.array(list(hl_distances_from_set(sets, x[mask], bw=bw)))
 
     distances /= len(np.unique(y))
-    distances = np.reshape(distances, (len(indices)/k, k))
+    distances = np.reshape(distances, (int(len(indices)/k), k))
 
     m = distances.mean(axis=1)
     s = distances.std(axis=1)
@@ -262,7 +263,7 @@ def generalization_curve(X, y, classifiers, add_noise=False, k=20,
         distances += np.array(list(hl_distances_from_set(sets, Xt[mask])))
 
     distances /= len(np.unique(y))
-    distances = np.reshape(distances, (len(indices)/k, k))
+    distances = np.reshape(distances, (int(len(indices)/k), k))
 
     distances = distances.mean(axis=1)
     order = np.argsort(distances)
@@ -280,7 +281,7 @@ def generalization_curve(X, y, classifiers, add_noise=False, k=20,
 
     out_array = [subset_sizes, distances]
     for score, clf in zip(scores, classifiers):
-        score = np.reshape(score, (len(score)/k, k)).mean(axis=1)
+        score = np.reshape(score, (int(len(score)/k), k)).mean(axis=1)
         score = score[order]
         out_array.append(score)
 
